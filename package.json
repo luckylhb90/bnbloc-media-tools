@@ -4,7 +4,7 @@
   "name": "media-tools",
   "version": "0.1.0",
   "publisher": "bnbloc",
-  "description": "Draw images and read audio recordings through the deployment's media providers: generate_image publishes into the room's Docs, transcribe_audio reads an attachment. The member connects it to their own gateway in Settings → Tools.",
+  "description": "Draw images and read audio recordings through the deployment's media providers: generate_image publishes into the room's Docs, transcribe_audio reads an attachment. Nothing to configure: the bridge connects it to its own gateway session at drive time.",
   "runtime": "stdio",
   "mcp": {
     "tools": [
@@ -20,17 +20,25 @@
     "env": [
       {
         "name": "MEDIA_TOOLS_URL",
-        "description": "Your gateway's base URL, e.g. https://bnbloc.example.com",
+        "description": "The bridge's own gateway address (injected, never configured).",
         "required": true
       },
       {
         "name": "MEDIA_TOOLS_TOKEN",
-        "description": "An API token of yours (Settings → My API tokens): the tools act as you.",
+        "description": "The bridge's session token for this drive, acting as the requester (injected, never configured).",
         "secret": true,
         "required": true
+      },
+      {
+        "name": "MEDIA_TOOLS_ROOM",
+        "description": "The room the answering agent works in (injected, never configured)."
+      },
+      {
+        "name": "MEDIA_TOOLS_JOB",
+        "description": "The job the answering agent answers (injected, never configured)."
       }
     ],
-    "credentials": "member",
+    "credentials": "bridge",
     "stdio": {
       "args": []
     }

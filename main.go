@@ -7,12 +7,13 @@
 // tools only when a deployment installs the package and the member's
 // content requires it (requires.mcp). The server speaks MCP over stdio,
 // holds no state of its own, and reaches only the member's own gateway
-// session: the URL and token arrive as environment variables
-// (MEDIA_TOOLS_URL, MEDIA_TOOLS_TOKEN), configured by the member in
-// Settings → Tools (credentials "member"; the values never leave the
-// member's machine). A call to the gateway runs as the requester of the
-// job the answering agent drives (?job=&room=), so it spends their rate
-// and is audited as theirs.
+// session: the bridge injects both environment variables at drive time —
+// MEDIA_TOOLS_URL is its own gateway address, MEDIA_TOOLS_TOKEN a session
+// token acting as the requester of the job the answering agent drives — so
+// nobody configures an address, and a member never hands the server a
+// token of their own. When a job grant is in the room context (?job=&room=
+// is the tool's to pass), the gateway answers under it, so a call spends
+// the requester's rate and is audited as theirs.
 //
 // The generated image never passes through the model's context: the tool
 // publishes it into the room's Docs through the gateway's room routes and
@@ -44,7 +45,7 @@ func run(in io.Reader, out io.Writer) error {
 		key:  strings.TrimSpace(os.Getenv("MEDIA_TOOLS_TOKEN")),
 	}
 	if gw.base == "" || gw.key == "" {
-		return fmt.Errorf("MEDIA_TOOLS_URL and MEDIA_TOOLS_TOKEN are required (Settings → Tools)")
+		return fmt.Errorf("MEDIA_TOOLS_URL and MEDIA_TOOLS_TOKEN are required (the bridge injects them at drive time)")
 	}
 	dec := json.NewDecoder(in)
 	for {
@@ -150,6 +151,16 @@ func callGenerate(gw *gateway, args json.RawMessage) (any, *rpcError) {
 			return nil, &rpcError{Code: -32602, Message: "invalid arguments: " + err.Error()}
 		}
 	}
+	// The bridge injected the room and job of the drive; the gateway
+	// resolves the job grant from them (the token the bridge injected is
+	// that session's), so a call acts as the requester and the image is
+	// attributed to the job.
+	room := strings.TrimSpace(os.Getenv("MEDIA_TOOLS_ROOM"))
+	job := strings.TrimSpace(os.Getenv("MEDIA_TOOLS_JOB"))
+	if room == "" || job == "" {
+		return nil, &rpcError{Code: -32000, Message: "the bridge did not inject the room and job (MEDIA_TOOLS_ROOM, MEDIA_TOOLS_JOB)"}
+	}
+	q := url.Values{"room": {room}, "job": {job}}
 	body := map[string]any{"prompt": strings.TrimSpace(in.Prompt), "fileName": strings.TrimSpace(in.FileName), "publish": true}
 	if in.Aspect != "" {
 		body["aspect"] = in.Aspect
@@ -157,6 +168,8 @@ func callGenerate(gw *gateway, args json.RawMessage) (any, *rpcError) {
 	if in.Count > 1 {
 		body["count"] = in.Count
 	}
+	_ = q
+
 	var reply struct {
 		Images []struct {
 			ArtifactID    string `json:"artifactId"`
@@ -166,7 +179,7 @@ func callGenerate(gw *gateway, args json.RawMessage) (any, *rpcError) {
 			RevisedPrompt string `json:"revisedPrompt"`
 		} `json:"images"`
 	}
-	if err := gw.post("/v1/media/image", body, &reply); err != nil {
+	if err := gw.post("/v1/media/image?"+q.Encode(), body, &reply); err != nil {
 		return nil, err
 	}
 	if len(reply.Images) == 0 {
@@ -195,7 +208,6 @@ func callGenerate(gw *gateway, args json.RawMessage) (any, *rpcError) {
 func callTranscribe(gw *gateway, args json.RawMessage) (any, *rpcError) {
 	var in struct {
 		AttachmentID string `json:"attachmentId"`
-		RoomID       string `json:"roomId"`
 	}
 	if len(args) > 0 && string(args) != "null" {
 		if err := json.Unmarshal(args, &in); err != nil {
@@ -206,16 +218,15 @@ func callTranscribe(gw *gateway, args json.RawMessage) (any, *rpcError) {
 	if id == "" {
 		return nil, &rpcError{Code: -32602, Message: "attachmentId is required: an audio attachment of the room (att_…)"}
 	}
-	// The gateway reads the attachment under the job grant of the answering
-	// agent (?job=&room=): the call runs as the requester, so the room id
-	// comes with the grant (roomId only names it for the query).
+	room := strings.TrimSpace(os.Getenv("MEDIA_TOOLS_ROOM"))
+	job := strings.TrimSpace(os.Getenv("MEDIA_TOOLS_JOB"))
+	if room == "" || job == "" {
+		return nil, &rpcError{Code: -32000, Message: "the bridge did not inject the room and job (MEDIA_TOOLS_ROOM, MEDIA_TOOLS_JOB)"}
+	}
 	var reply struct {
 		Text string `json:"text"`
 	}
-	q := url.Values{"attachment": {id}}
-	if rid := strings.TrimSpace(in.RoomID); rid != "" {
-		q.Set("room", rid)
-	}
+	q := url.Values{"attachment": {id}, "room": {room}, "job": {job}}
 	if err := gw.post("/v1/media/transcriptions?"+q.Encode(), nil, &reply); err != nil {
 		return nil, err
 	}

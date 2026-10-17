@@ -70,6 +70,10 @@ func TestMCPStdioSurface(t *testing.T) {
 	}
 	// generate_image publishes (publish rides the arguments); rewire the
 	// fake to capture the generate body, keeping the transcription reply.
+	// The bridge's injected room/job ride the query (the stdio server reads
+	// them from its environment).
+	t.Setenv("MEDIA_TOOLS_ROOM", "r1")
+	t.Setenv("MEDIA_TOOLS_JOB", "job-1")
 	var sentGenerate string
 	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		recorded = append(recorded, r.URL.Path+"?"+r.URL.RawQuery)
@@ -94,7 +98,7 @@ func TestMCPStdioSurface(t *testing.T) {
 		t.Fatalf("generate text = %s", text)
 	}
 	// transcribe_audio reads a room attachment.
-	res, rerr = dispatch(gw, "tools/call", mustParams(`{"name":"transcribe_audio","arguments":{"attachmentId":"att_1","roomId":"r1"}}`))
+	res, rerr = dispatch(gw, "tools/call", mustParams(`{"name":"transcribe_audio","arguments":{"attachmentId":"att_1"}}`))
 	if rerr != nil {
 		t.Fatalf("transcribe = %v", rerr)
 	}
