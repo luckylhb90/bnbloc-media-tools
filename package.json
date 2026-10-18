@@ -2,7 +2,7 @@
   "kind": "bnbloc.mcp.package/v1",
   "contract": "bnbloc.mcp.contract/v1",
   "name": "media-tools",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "bnbloc",
   "description": "Draw and edit images and read audio recordings through the deployment's media providers. Nothing to configure: the room is the credential (each call acts as the person the agent is answering).",
   "runtime": "stdio",

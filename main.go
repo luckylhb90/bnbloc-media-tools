@@ -128,6 +128,7 @@ var toolGenerate = map[string]any{
 				"properties": map[string]any{
 					"x": map[string]any{"type": "integer"}, "y": map[string]any{"type": "integer"},
 					"w": map[string]any{"type": "integer"}, "h": map[string]any{"type": "integer"},
+					"mask": map[string]any{"type": "string", "description": "The painted mask (att_…) of an area the person painted: only it changes."},
 				},
 				"required": []string{"x", "y", "w", "h"},
 			},
