@@ -62,7 +62,7 @@ func TestMCPStdioSurface(t *testing.T) {
 		t.Fatalf("initialize = %v %v", res, rerr)
 	}
 	res, _ = dispatch(gw, "tools/list", nil)
-	if tools := res.(map[string]any)["tools"].([]any); len(tools) != 2 {
+	if tools := res.(map[string]any)["tools"].([]any); len(tools) != 3 {
 		t.Fatalf("tools = %v", tools)
 	}
 

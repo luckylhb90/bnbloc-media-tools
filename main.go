@@ -1,9 +1,10 @@
 // Command bnbloc-media-tools is the media tools MCP component
 // (bnbloc.mcp.package/v1, runtime stdio): the agent-side surface of the
 // platform's media model calls (docs/prd/2026-10-16-voice-and-image-
-// generation.md §4) — generate_image and transcribe_audio.
+// generation.md §4) — generate_image, generate_video
+// (docs/prd/2026-10-19-video-generation.md) and transcribe_audio.
 //
-// It is an installable component, never a built-in: an agent sees the two
+// It is an installable component, never a built-in: an agent sees the
 // tools only when a deployment installs the package and the member's
 // content requires it (requires.mcp). The server speaks MCP over stdio and
 // holds no state of its own. Its credentials are the room
@@ -85,7 +86,7 @@ func dispatch(gw *relay, method string, params json.RawMessage) (any, *rpcError)
 	case "notifications/initialized", "ping":
 		return map[string]any{}, nil
 	case "tools/list":
-		return map[string]any{"tools": []any{toolGenerate, toolTranscribe}}, nil
+		return map[string]any{"tools": []any{toolGenerate, toolVideo, toolTranscribe}}, nil
 	case "tools/call":
 		var p struct {
 			Name      string          `json:"name"`
@@ -97,6 +98,8 @@ func dispatch(gw *relay, method string, params json.RawMessage) (any, *rpcError)
 		switch p.Name {
 		case "generate_image":
 			return callGenerate(gw, p.Arguments)
+		case "generate_video":
+			return callVideo(gw, p.Arguments)
 		case "transcribe_audio":
 			return callTranscribe(gw, p.Arguments)
 		default:
@@ -258,11 +261,21 @@ type relay struct{ base, token string }
 
 // post sends one request through the relay and decodes the reply.
 func (g *relay) post(path string, q url.Values, contentType string, body []byte, out any) *rpcError {
+	return g.do(http.MethodPost, path, q, contentType, body, out)
+}
+
+// get asks the relay and decodes the reply.
+func (g *relay) get(path string, q url.Values, out any) *rpcError {
+	return g.do(http.MethodGet, path, q, "", nil, out)
+}
+
+// do sends one request through the relay and decodes the reply.
+func (g *relay) do(method, path string, q url.Values, contentType string, body []byte, out any) *rpcError {
 	target := g.base + path
 	if len(q) > 0 {
 		target += "?" + q.Encode()
 	}
-	req, err := http.NewRequest(http.MethodPost, target, bytes.NewReader(body))
+	req, err := http.NewRequest(method, target, bytes.NewReader(body))
 	if err != nil {
 		return &rpcError{Code: -32000, Message: err.Error()}
 	}

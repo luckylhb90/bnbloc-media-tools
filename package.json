@@ -2,14 +2,17 @@
   "kind": "bnbloc.mcp.package/v1",
   "contract": "bnbloc.mcp.contract/v1",
   "name": "media-tools",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "publisher": "bnbloc",
-  "description": "Draw and edit images and read audio recordings through the deployment's media providers. Nothing to configure: the room is the credential (each call acts as the person the agent is answering).",
+  "description": "Draw and edit images, make short videos and read audio recordings through the deployment's media providers. Nothing to configure: the room is the credential (each call acts as the person the agent is answering).",
   "runtime": "stdio",
   "mcp": {
     "tools": [
       {
         "name": "generate_image"
+      },
+      {
+        "name": "generate_video"
       },
       {
         "name": "transcribe_audio"
